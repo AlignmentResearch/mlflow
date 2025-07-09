@@ -147,13 +147,12 @@ export const RunViewStdoutTab = ({
             margin: 0,
             padding: theme.spacing.md,
             backgroundColor: theme.colors.backgroundSecondary,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
+            whiteSpace: 'pre',
             height: '100%',
             overflow: 'auto',
           }}
-          showLineNumbers
-          wrapLongLines
+          showLineNumbers={false}
+          wrapLongLines={false}
         >
           {stdoutContent}
         </SyntaxHighlighter>

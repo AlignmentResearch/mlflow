@@ -30,7 +30,7 @@ class TeeStringIO:
 
 
 @contextmanager
-def log_stdout_stream(interval_seconds=5):
+def log_stdout_stream(run_id, interval_seconds=5):
     """
     A context manager to stream stdout to an MLflow artifact.
 
@@ -39,6 +39,7 @@ def log_stdout_stream(interval_seconds=5):
     contents to an MLflow artifact file named 'stdout.log'.
 
     Args:
+        run_id (str): The run ID to log stdout to.
         interval_seconds (int): The interval in seconds at which to log
                                 the stdout buffer to MLflow.
 
@@ -46,8 +47,8 @@ def log_stdout_stream(interval_seconds=5):
         import time
         import mlflow
 
-        with mlflow.start_run():
-            with log_stdout_stream():
+        with mlflow.start_run() as run:
+            with log_stdout_stream(run.info.run_id):
                 print("This is the start of my script.")
                 time.sleep(6)
                 print("This message will appear in the first log upload.")
@@ -57,9 +58,6 @@ def log_stdout_stream(interval_seconds=5):
             # and cleanup.
         print("Stdout is now back to normal.")
     """
-    if not mlflow.active_run():
-        raise RuntimeError("An active MLflow run is required to stream stdout.")
-
     original_stdout = sys.stdout
     stdout_buffer = StringIO()
     tee_stdout = TeeStringIO(original_stdout, stdout_buffer)
@@ -77,7 +75,7 @@ def log_stdout_stream(interval_seconds=5):
         content = stdout_buffer.getvalue()
 
         if content:
-            mlflow.log_text(content, "stdout.log")
+            mlflow.log_text(content, "stdout.log", run_id=run_id)
 
     try:
         log_thread = threading.Thread(target=_log_loop, name="mlflow-stdout-logging")

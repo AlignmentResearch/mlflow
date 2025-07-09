@@ -516,7 +516,10 @@ def start_run(
             from mlflow.utils.stdout_logging import log_stdout_stream
 
             # Create a context manager that will be entered when the ActiveRun is used
-            stdout_logger = log_stdout_stream(interval_seconds=log_stdout_interval)
+            stdout_logger = log_stdout_stream(
+                active_run_obj.info.run_id,
+                interval_seconds=log_stdout_interval,
+            )
             run_id_to_stdout_logger[active_run_obj.info.run_id] = stdout_logger
             # Start the stdout logging
             stdout_logger.__enter__()

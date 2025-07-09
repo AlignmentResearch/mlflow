@@ -17,3 +17,21 @@ export function useSearchFilter() {
 
   return [searchFilter, setSearchFilter] as const;
 }
+
+export function useProjectFilter() {
+  const name = 'experimentProjectFilter';
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const projectFilter = searchParams.get(name) ?? '';
+
+  function setProjectFilter(projectFilter: string) {
+    if (!projectFilter) {
+      searchParams.delete(name);
+    } else {
+      searchParams.set(name, projectFilter);
+    }
+    setSearchParams(searchParams);
+  }
+
+  return [projectFilter, setProjectFilter] as const;
+}

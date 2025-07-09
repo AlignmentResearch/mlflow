@@ -8,11 +8,14 @@ import {
   Header,
   Alert,
   useDesignSystemTheme,
+  SimpleSelect,
+  SimpleSelectOption,
+  Spinner,
 } from '@databricks/design-system';
 import 'react-virtualized/styles.css';
 import Routes from '../routes';
 import { CreateExperimentModal } from './modals/CreateExperimentModal';
-import { useExperimentListQuery, useInvalidateExperimentList } from './experiment-page/hooks/useExperimentListQuery';
+import { useExperimentListQuery, useUniqueProjectNames, useInvalidateExperimentList } from './experiment-page/hooks/useExperimentListQuery';
 import { RowSelectionState } from '@tanstack/react-table';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { ScrollablePageWrapper } from '../../common/components/ScrollablePageWrapper';
@@ -25,9 +28,11 @@ import { useUpdateExperimentTags } from './experiment-page/hooks/useUpdateExperi
 type Props = {
   searchFilter: string;
   setSearchFilter: (searchFilter: string) => void;
+  projectFilter: string;
+  setProjectFilter: (projectFilter: string) => void;
 };
 
-export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => {
+export const ExperimentListView = ({ searchFilter, setSearchFilter, projectFilter, setProjectFilter }: Props) => {
   const {
     data: experiments,
     isLoading,
@@ -39,8 +44,10 @@ export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => 
     pageSizeSelect,
     sorting,
     setSorting,
-  } = useExperimentListQuery({ searchFilter });
+  } = useExperimentListQuery({ searchFilter, projectFilter });
   const invalidateExperimentList = useInvalidateExperimentList();
+
+  const { projectNames, isLoading: isLoadingProjects } = useUniqueProjectNames();
 
   const { EditTagsModal, showEditExperimentTagsModal } = useUpdateExperimentTags({
     onSuccess: invalidateExperimentList,
@@ -63,6 +70,10 @@ export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => 
     setSearchFilter('');
   };
 
+  const handleProjectFilterChange = ({ target }: { target: { value: string } }) => {
+    setProjectFilter(target.value);
+  };
+
   const handleCreateExperiment = () => {
     setShowCreateExperimentModal(true);
   };
@@ -83,6 +94,9 @@ export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => 
   const { theme } = useDesignSystemTheme();
   const navigate = useNavigate();
   const intl = useIntl();
+
+  // Get the experiment objects for the checked keys
+  const selectedExperiments = (experiments || []).filter(({ experimentId }) => checkedKeys.includes(experimentId));
 
   return (
     <ScrollablePageWrapper css={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -149,24 +163,55 @@ export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => 
       )}
       <div css={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <TableFilterLayout>
-          <TableFilterInput
-            data-testid="search-experiment-input"
-            placeholder={intl.formatMessage({
-              defaultMessage: 'Filter experiments by name',
-              description: 'Placeholder text inside experiments search bar',
-            })}
-            componentId="mlflow.experiment_list_view.search"
-            defaultValue={searchFilter}
-            onChange={handleSearchInputChange}
-            onSubmit={handleSearchSubmit}
-            onClear={handleSearchClear}
-            showSearchButton
-          />
+          <div css={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
+            <div css={{ minWidth: 200 }}>
+              {isLoadingProjects ? (
+                <div css={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.sm }}>
+                  <Spinner size="small" />
+                </div>
+              ) : (
+                <SimpleSelect
+                  componentId="mlflow.experiment_list_view.project_filter"
+                  id="project-filter-dropdown"
+                  value={projectFilter}
+                  placeholder={intl.formatMessage({
+                    defaultMessage: 'Filter by project',
+                    description: 'Placeholder for project filter dropdown',
+                  })}
+                  onChange={handleProjectFilterChange}
+                  data-testid="project-filter-dropdown"
+                  disabled={isLoadingProjects}
+                >
+                  <SimpleSelectOption value="">
+                    {intl.formatMessage({ defaultMessage: 'All Projects', description: 'Option to show all projects' })}
+                  </SimpleSelectOption>
+                  {projectNames.map(name => (
+                    <SimpleSelectOption key={name} value={name}>
+                      {name}
+                    </SimpleSelectOption>
+                  ))}
+                </SimpleSelect>
+              )}
+            </div>
+            <TableFilterInput
+              data-testid="search-experiment-input"
+              placeholder={intl.formatMessage({
+                defaultMessage: 'Filter experiments by name',
+                description: 'Placeholder text inside experiments search bar',
+              })}
+              componentId="mlflow.experiment_list_view.search"
+              defaultValue={searchFilter}
+              onChange={handleSearchInputChange}
+              onSubmit={handleSearchSubmit}
+              onClear={handleSearchClear}
+              showSearchButton
+            />
+          </div>
         </TableFilterLayout>
         <ExperimentListTable
           experiments={experiments}
           isLoading={isLoading}
-          isFiltered={Boolean(searchFilter)}
+          isFiltered={Boolean(searchFilter || projectFilter)}
           rowSelection={rowSelection}
           setRowSelection={setRowSelection}
           cursorPaginationProps={{
@@ -186,9 +231,9 @@ export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => 
         onExperimentCreated={invalidateExperimentList}
       />
       <BulkDeleteExperimentModal
-        experiments={(experiments ?? []).filter(({ experimentId }) => checkedKeys.includes(experimentId))}
         isOpen={showBulkDeleteExperimentModal}
         onClose={() => setShowBulkDeleteExperimentModal(false)}
+        experiments={selectedExperiments}
         onExperimentsDeleted={() => {
           invalidateExperimentList();
           setRowSelection({});

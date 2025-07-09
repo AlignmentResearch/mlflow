@@ -11,6 +11,7 @@ import { RenameRunModal } from '../modals/RenameRunModal';
 import { RunViewArtifactTab } from './RunViewArtifactTab';
 import { RunViewHeader } from './RunViewHeader';
 import { RunViewOverview } from './RunViewOverview';
+import { RunViewStdoutTab } from './RunViewStdoutTab';
 import { useRunDetailsPageData } from './hooks/useRunDetailsPageData';
 import { useRunViewActiveTab } from './useRunViewActiveTab';
 import { ReduxState } from '../../../redux-types';
@@ -138,6 +139,14 @@ export const RunPage = () => {
             runOutputs={runOutputs}
             experimentId={experimentId}
             artifactUri={runInfo.artifactUri ?? undefined}
+          />
+        );
+      case RunPageTabName.STDOUT:
+        return (
+          <RunViewStdoutTab
+            runUuid={runUuid}
+            experimentId={experimentId}
+            runTags={tags}
           />
         );
       case RunPageTabName.TRACES:

@@ -18,6 +18,9 @@ export const useRunViewActiveTab = (): RunPageTabName => {
   if (shouldEnableRunDetailsPageTracesTab() && tabParam === 'traces') {
     return RunPageTabName.TRACES;
   }
+  if (tabParam === 'stdout') {
+    return RunPageTabName.STDOUT;
+  }
   if (tabParam?.match(/^(artifactPath|artifacts)/)) {
     return RunPageTabName.ARTIFACTS;
   }

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-MLflow Stdout Logging Integration Test
+MLflow Stdout/Stderr Logging Integration Test
 
 This test demonstrates the enhanced stdout logging that captures output from:
-1. Python print statements (sys.stdout)
+1. Python print statements (sys.stdout and sys.stderr)
 2. C/C++ libraries via subprocess calls
 3. System commands via os.system()
 4. C library functions via ctypes
@@ -13,7 +13,7 @@ The test requires MLflow server to be running. Start it with:
 
 Expected behavior:
 - All output appears in both terminal and MLflow artifact 'stdout.log'
-- Both Python and C/C++ stdout are captured
+- Both Python and C/C++ stdout AND stderr are captured
 - Final message appears only in terminal (after run ends)
 """
 
@@ -42,6 +42,12 @@ if __name__ == "__main__":
             print(f"Python message {i + 1}/3")
             time.sleep(1)
 
+        # Test Python stderr
+        print("\n=== Testing Python stderr ===")
+        for i in range(2):
+            print(f"Python stderr message {i + 1}/2", file=sys.stderr)
+            time.sleep(1)
+
         # Test C/C++ stdout via subprocess
         print("\n=== Testing C/C++ stdout via subprocess ===")
         try:
@@ -49,6 +55,19 @@ if __name__ == "__main__":
             subprocess.run(["printf", "Formatted output from printf: %d\\n", "42"], check=True)
             if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
                 subprocess.run(["ls", "-la", "/tmp"], check=True, stdout=None)
+        except subprocess.CalledProcessError as e:
+            print(f"Subprocess failed: {e}")
+        except FileNotFoundError:
+            print("Some commands not available on this system")
+
+        # Test C/C++ stderr via subprocess
+        print("\n=== Testing C/C++ stderr via subprocess ===")
+        try:
+            # This should write to stderr
+            subprocess.run(["sh", "-c", "echo 'Error message to stderr' >&2"], check=True)
+            if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+                # ls with invalid path writes to stderr
+                subprocess.run(["ls", "/nonexistent/path"], check=False)
         except subprocess.CalledProcessError as e:
             print(f"Subprocess failed: {e}")
         except FileNotFoundError:

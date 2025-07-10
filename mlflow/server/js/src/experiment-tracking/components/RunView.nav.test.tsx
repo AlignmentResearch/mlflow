@@ -75,6 +75,7 @@ describe('RunView navigation integration test', () => {
       expect(screen.queryByText('model metric charts')).not.toBeInTheDocument();
       expect(screen.queryByText('system metric charts')).not.toBeInTheDocument();
       expect(screen.queryByText('artifacts tab')).not.toBeInTheDocument();
+      expect(screen.queryByText('stdout tab')).not.toBeInTheDocument();
     });
 
     await userEvent.click(screen.getByRole('tab', { name: 'Model metrics' }));
@@ -83,6 +84,7 @@ describe('RunView navigation integration test', () => {
     expect(screen.queryByText('model metric charts')).toBeInTheDocument();
     expect(screen.queryByText('system metric charts')).not.toBeInTheDocument();
     expect(screen.queryByText('artifacts tab')).not.toBeInTheDocument();
+    expect(screen.queryByText('stdout tab')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: 'System metrics' }));
 
@@ -90,16 +92,34 @@ describe('RunView navigation integration test', () => {
     expect(screen.queryByText('model metric charts')).not.toBeInTheDocument();
     expect(screen.queryByText('system metric charts')).toBeInTheDocument();
     expect(screen.queryByText('artifacts tab')).not.toBeInTheDocument();
+    expect(screen.queryByText('stdout tab')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Stdout' }));
+
+    expect(screen.queryByText('overview tab')).not.toBeInTheDocument();
+    expect(screen.queryByText('model metric charts')).not.toBeInTheDocument();
+    expect(screen.queryByText('system metric charts')).not.toBeInTheDocument();
+    expect(screen.queryByText('artifacts tab')).not.toBeInTheDocument();
+    expect(screen.queryByText('stdout tab')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: 'Artifacts' }));
 
     expect(screen.queryByText('overview tab')).not.toBeInTheDocument();
     expect(screen.queryByText('model metrics')).not.toBeInTheDocument();
     expect(screen.queryByText('system metrics')).not.toBeInTheDocument();
+    expect(screen.queryByText('stdout tab')).not.toBeInTheDocument();
     expect(screen.queryByText('artifacts tab')).toBeInTheDocument();
   });
 
-  test('should display artirfact tab if using a targeted artifact URL', async () => {
+  test('should display stdout tab if using a targeted stdout URL', async () => {
+    renderComponent('/experiments/123456789/runs/experiment123456789_run1/stdout');
+
+    await waitFor(() => {
+      expect(screen.queryByText('stdout tab')).toBeInTheDocument();
+    });
+  });
+
+  test('should display artifact tab if using a targeted artifact URL', async () => {
     renderComponent('/experiments/123456789/runs/experiment123456789_run1/artifacts/model/conda.yaml');
 
     await waitFor(() => {

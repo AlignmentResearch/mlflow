@@ -77,6 +77,12 @@ export const RunViewModeSwitch = () => {
       {getLegacyTracesTabLink()}
       <LegacyTabs.TabPane
         tab={
+          <FormattedMessage defaultMessage="Stdout" description="Run details page > tab selector > Stdout tab" />
+        }
+        key={RunPageTabName.STDOUT}
+      />
+      <LegacyTabs.TabPane
+        tab={
           <FormattedMessage defaultMessage="Artifacts" description="Run details page > tab selector > artifacts tab" />
         }
         key={RunPageTabName.ARTIFACTS}

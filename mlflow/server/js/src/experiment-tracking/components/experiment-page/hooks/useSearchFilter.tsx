@@ -1,4 +1,5 @@
 import { useSearchParams } from '@mlflow/mlflow/src/common/utils/RoutingUtils';
+import { useLocalStorage } from '@mlflow/mlflow/src/shared/web-shared/hooks/useLocalStorage';
 
 export function useSearchFilter() {
   const name = 'experimentSearchFilter';
@@ -19,18 +20,31 @@ export function useSearchFilter() {
 }
 
 export function useProjectFilter() {
-  const name = 'experimentProjectFilter';
+  const urlParamName = 'experimentProjectFilter';
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const projectFilter = searchParams.get(name) ?? '';
+  // Use localStorage for persistence across sessions
+  const [persistedProjectFilter, setPersistedProjectFilter] = useLocalStorage({
+    key: 'experiments_page.project_filter',
+    version: 0,
+    initialValue: '',
+  });
+
+  // Get project filter from URL first, then fallback to localStorage
+  const urlProjectFilter = searchParams.get(urlParamName);
+  const projectFilter = urlProjectFilter ?? persistedProjectFilter;
 
   function setProjectFilter(projectFilter: string) {
+    // Update URL parameter
     if (!projectFilter) {
-      searchParams.delete(name);
+      searchParams.delete(urlParamName);
     } else {
-      searchParams.set(name, projectFilter);
+      searchParams.set(urlParamName, projectFilter);
     }
     setSearchParams(searchParams);
+    
+    // Also persist to localStorage
+    setPersistedProjectFilter(projectFilter);
   }
 
   return [projectFilter, setProjectFilter] as const;

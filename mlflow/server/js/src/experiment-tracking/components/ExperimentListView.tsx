@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Theme } from '@emotion/react';
 import {
   Button,
@@ -8,11 +8,14 @@ import {
   Header,
   Alert,
   useDesignSystemTheme,
+  SimpleSelect,
+  SimpleSelectOption,
+  Spinner,
 } from '@databricks/design-system';
 import 'react-virtualized/styles.css';
 import Routes from '../routes';
 import { CreateExperimentModal } from './modals/CreateExperimentModal';
-import { useExperimentListQuery, useInvalidateExperimentList } from './experiment-page/hooks/useExperimentListQuery';
+import { useExperimentListQuery, useUniqueProjectNames, useInvalidateExperimentList } from './experiment-page/hooks/useExperimentListQuery';
 import { RowSelectionState } from '@tanstack/react-table';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { ScrollablePageWrapper } from '../../common/components/ScrollablePageWrapper';
@@ -25,41 +28,59 @@ import { useUpdateExperimentTags } from './experiment-page/hooks/useUpdateExperi
 type Props = {
   searchFilter: string;
   setSearchFilter: (searchFilter: string) => void;
+  projectFilter: string;
+  setProjectFilter: (projectFilter: string) => void;
 };
 
-export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => {
-  const {
-    data: experiments,
-    isLoading,
-    error,
-    hasNextPage,
-    hasPreviousPage,
-    onNextPage,
-    onPreviousPage,
-    pageSizeSelect,
-    sorting,
-    setSorting,
-  } = useExperimentListQuery({ searchFilter });
+export const ExperimentListView = ({ searchFilter, setSearchFilter, projectFilter, setProjectFilter }: Props) => {
+  const { data, isLoading, error, paginationProps, pageSize, setPageSize, sorting, setSorting } = useExperimentListQuery(searchFilter, projectFilter);
+  const { projectNames, isLoading: isLoadingProjects } = useUniqueProjectNames();
   const invalidateExperimentList = useInvalidateExperimentList();
 
   const { EditTagsModal, showEditExperimentTagsModal } = useUpdateExperimentTags({
     onSuccess: invalidateExperimentList,
   });
 
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [searchInput, setSearchInput] = useState('');
-  const [showCreateExperimentModal, setShowCreateExperimentModal] = useState(false);
+  const handleRefetch = useCallback(() => {
+    invalidateExperimentList();
+  }, [invalidateExperimentList]);
+
+  const handleProjectFilterChange = useCallback((e: any) => {
+    setProjectFilter(e.target.value);
+  }, [setProjectFilter]);
+
+  const experimentsData = data?.experiments || [];
+  const experimentIds = experimentsData.map((e) => e.experimentId);
+  const [selectedExperimentIds, setSelectedExperimentIds] = useState<RowSelectionState>({});
   const [showBulkDeleteExperimentModal, setShowBulkDeleteExperimentModal] = useState(false);
 
-  const handleSearchInputChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-    setSearchInput(event.target.value);
+  const handleBulkDeleteExperiments = useCallback(() => {
+    const selectedIds = Object.keys(selectedExperimentIds).filter((id) => selectedExperimentIds[id]);
+    const selectedExperiments = experimentsData.filter((exp) => selectedIds.includes(exp.experimentId));
+    setShowBulkDeleteExperimentModal(true);
+  }, [selectedExperimentIds, experimentsData]);
+
+  const handleExperimentSelectionChange = useCallback((experimentIds: string[]) => {
+    const newSelectionState: RowSelectionState = {};
+    experimentIds.forEach((id) => {
+      newSelectionState[id] = true;
+    });
+    setSelectedExperimentIds(newSelectionState);
+  }, []);
+
+  const [searchInput, setSearchInput] = useState('');
+  const [showCreateExperimentModal, setShowCreateExperimentModal] = useState(false);
+
+  const handleRefresh = () => {
+    handleRefetch();
   };
 
-  const handleSearchSubmit = () => {
-    setSearchFilter(searchInput);
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value);
   };
 
-  const handleSearchClear = () => {
+  const handleClearSearch = () => {
+    setSearchInput('');
     setSearchFilter('');
   };
 
@@ -71,128 +92,184 @@ export const ExperimentListView = ({ searchFilter, setSearchFilter }: Props) => 
     setShowCreateExperimentModal(false);
   };
 
+  const checkedKeys = Object.entries(selectedExperimentIds)
+    .filter(([_, value]) => value)
+    .map(([key, _]) => key);
+
+  const theme = useDesignSystemTheme();
+  const navigate = useNavigate();
+  const intl = useIntl();
+
   const pushExperimentRoute = () => {
     const route = Routes.getCompareExperimentsPageRoute(checkedKeys);
     navigate(route);
   };
 
-  const checkedKeys = Object.entries(rowSelection)
-    .filter(([_, value]) => value)
-    .map(([key, _]) => key);
+  const hasSelectedExperiments = Object.values(selectedExperimentIds).some(Boolean);
 
-  const { theme } = useDesignSystemTheme();
-  const navigate = useNavigate();
-  const intl = useIntl();
+  // Get the experiment objects for the checked keys
+  const selectedExperiments = (experimentsData || []).filter(({ experimentId }) => checkedKeys.includes(experimentId));
 
   return (
-    <ScrollablePageWrapper css={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <Spacer shrinks={false} />
-      <Header
-        title={<FormattedMessage defaultMessage="Experiments" description="Header title for the experiments page" />}
-        buttons={
-          <>
-            <Button
-              componentId="mlflow.experiment_list_view.new_experiment_button"
-              type="primary"
-              onClick={handleCreateExperiment}
-              data-testid="create-experiment-button"
-            >
-              <FormattedMessage
-                defaultMessage="Create"
-                description="Label for the create experiment action on the experiments list page"
-              />
-            </Button>
-            <Button
-              componentId="mlflow.experiment_list_view.compare_experiments_button"
-              onClick={pushExperimentRoute}
-              data-testid="compare-experiment-button"
-              disabled={checkedKeys.length < 2}
-            >
-              <FormattedMessage
-                defaultMessage="Compare"
-                description="Label for the compare experiments action on the experiments list page"
-              />
-            </Button>
-            <Button
-              componentId="mlflow.experiment_list_view.bulk_delete_button"
-              onClick={() => setShowBulkDeleteExperimentModal(true)}
-              data-testid="delete-experiments-button"
-              disabled={checkedKeys.length < 1}
-              danger
-            >
-              <FormattedMessage
-                defaultMessage="Delete"
-                description="Label for the delete experiments action on the experiments list page"
-              />
-            </Button>
-          </>
-        }
-      />
-      <Spacer shrinks={false} />
-      {error && (
-        <Alert
-          css={{ marginBlockEnd: theme.spacing.sm }}
-          type="error"
-          message={
-            error instanceof ErrorWrapper
-              ? error.getMessageField()
-              : error.message || (
-                  <FormattedMessage
-                    defaultMessage="A network error occurred."
-                    description="Error message for generic network error"
-                  />
-                )
-          }
-          componentId="mlflow.experiment_list_view.error"
-          closable={false}
-        />
-      )}
-      <div css={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <TableFilterLayout>
-          <TableFilterInput
-            data-testid="search-experiment-input"
-            placeholder={intl.formatMessage({
-              defaultMessage: 'Filter experiments by name',
-              description: 'Placeholder text inside experiments search bar',
-            })}
-            componentId="mlflow.experiment_list_view.search"
-            defaultValue={searchFilter}
-            onChange={handleSearchInputChange}
-            onSubmit={handleSearchSubmit}
-            onClear={handleSearchClear}
-            showSearchButton
-          />
-        </TableFilterLayout>
-        <ExperimentListTable
-          experiments={experiments}
-          isLoading={isLoading}
-          isFiltered={Boolean(searchFilter)}
-          rowSelection={rowSelection}
-          setRowSelection={setRowSelection}
-          cursorPaginationProps={{
-            hasNextPage,
-            hasPreviousPage,
-            onNextPage,
-            onPreviousPage,
-            pageSizeSelect,
+    <ScrollablePageWrapper>
+      <div css={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div
+          css={{
+            paddingBottom: 8,
+            paddingTop: 8,
+            gap: 16,
           }}
-          sortingProps={{ sorting, setSorting }}
-          onEditTags={showEditExperimentTagsModal}
-        />
+        >
+          <Header
+            title=""
+            breadcrumbs={[
+              <FormattedMessage
+                key="experiments"
+                defaultMessage="Experiments"
+                description="Breadcrumb item referring to the experiments page"
+              />,
+            ]}
+            buttons={[
+              <Button
+                componentId="mlflow.experiment_list_view.create_button"
+                key="create"
+                data-testid="create-experiment-button"
+                onClick={handleCreateExperiment}
+                type="primary"
+              >
+                <FormattedMessage
+                  defaultMessage="Create"
+                  description="Button to create a new experiment"
+                />
+              </Button>,
+            ]}
+          />
+        </div>
+        <div css={{ flex: 1, overflow: 'hidden' }}>
+          <TableFilterLayout
+            actions={
+              <div css={{ display: 'flex', gap: 8 }}>
+                <Button
+                  componentId="mlflow.experiment_list_view.refresh_button"
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                >
+                  <FormattedMessage
+                    defaultMessage="Refresh"
+                    description="Button to refresh the experiments list"
+                  />
+                </Button>
+                {(searchFilter || projectFilter) && (
+                  <Button
+                    componentId="mlflow.experiment_list_view.clear_filters_button"
+                    onClick={() => {
+                      setSearchFilter('');
+                      setProjectFilter('');
+                    }}
+                  >
+                    <FormattedMessage
+                      defaultMessage="Clear Filters"
+                      description="Button to clear all filters"
+                    />
+                  </Button>
+                )}
+              </div>
+            }
+          >
+            <div css={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+              <SimpleSelect
+                componentId="mlflow.experiment_list_view.project_filter"
+                id="project-filter-dropdown"
+                value={projectFilter}
+                placeholder={intl.formatMessage({
+                  defaultMessage: 'Filter by project',
+                  description: 'Placeholder for project filter dropdown',
+                })}
+                onChange={handleProjectFilterChange}
+                data-testid="project-filter-dropdown"
+                disabled={isLoadingProjects}
+              >
+                <SimpleSelectOption value="">
+                  <FormattedMessage
+                    defaultMessage="All Projects"
+                    description="Option to show all projects"
+                  />
+                </SimpleSelectOption>
+                {projectNames.map((project) => (
+                  <SimpleSelectOption key={project} value={project}>
+                    {project}
+                  </SimpleSelectOption>
+                ))}
+              </SimpleSelect>
+              <TableFilterInput
+                componentId="mlflow.experiment_list_view.name_filter"
+                placeholder={intl.formatMessage({
+                  defaultMessage: 'Filter experiments by name',
+                  description: 'Placeholder for experiment name filter input',
+                })}
+                value={searchInput}
+                onChange={handleSearchInputChange}
+                onClear={handleClearSearch}
+              />
+            </div>
+            {/* Loading state */}
+            {isLoading && (
+              <div css={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Spinner size="small" />
+                <FormattedMessage
+                  defaultMessage="Loading experiments..."
+                  description="Loading message for experiments"
+                />
+              </div>
+            )}
+            {/* Error state */}
+            {error && (
+              <Alert
+                componentId="mlflow.experiment_list_view.error_alert"
+                type="error"
+                message={error.message}
+                css={{ marginBottom: 16 }}
+              />
+            )}
+            {/* Result count */}
+            {!isLoading && !error && (
+              <div css={{ marginBottom: 16, color: '#666' }}>
+                <FormattedMessage
+                  defaultMessage="{count} {count, plural, one {experiment} other {experiments}}"
+                  description="Count of experiments shown"
+                  values={{ count: experimentsData?.length || 0 }}
+                />
+                {(searchFilter || projectFilter) && (
+                  <FormattedMessage
+                    defaultMessage=" (filtered)"
+                    description="Indicator that results are filtered"
+                  />
+                )}
+              </div>
+            )}
+          </TableFilterLayout>
+          <ExperimentListTable
+            experiments={experimentsData}
+            isLoading={isLoading}
+            isFiltered={Boolean(searchFilter || projectFilter)}
+            rowSelection={selectedExperimentIds}
+            setRowSelection={setSelectedExperimentIds}
+            cursorPaginationProps={paginationProps}
+            sortingProps={{ sorting, setSorting }}
+            onEditTags={showEditExperimentTagsModal}
+          />
+        </div>
       </div>
       <CreateExperimentModal
         isOpen={showCreateExperimentModal}
         onClose={handleCloseCreateExperimentModal}
-        onExperimentCreated={invalidateExperimentList}
+        onExperimentCreated={handleRefetch}
       />
       <BulkDeleteExperimentModal
-        experiments={(experiments ?? []).filter(({ experimentId }) => checkedKeys.includes(experimentId))}
         isOpen={showBulkDeleteExperimentModal}
         onClose={() => setShowBulkDeleteExperimentModal(false)}
-        onExperimentsDeleted={() => {
-          invalidateExperimentList();
-          setRowSelection({});
-        }}
+        experiments={selectedExperiments}
+        onExperimentsDeleted={handleRefetch}
       />
       {EditTagsModal}
     </ScrollablePageWrapper>

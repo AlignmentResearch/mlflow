@@ -113,80 +113,141 @@ export const ExperimentListView = ({ searchFilter, setSearchFilter, projectFilte
   return (
     <ScrollablePageWrapper>
       <div css={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Header
+        <div
           css={{
             paddingBottom: 8,
             paddingTop: 8,
             gap: 16,
           }}
-          breadcrumbs={[
-            <FormattedMessage
-              key="experiments"
-              defaultMessage="Experiments"
-              description="Breadcrumb item referring to the experiments page"
-            />,
-          ]}
-          buttons={[
-            <Button
-              key="create"
-              data-testid="create-experiment-button"
-              onClick={handleCreateExperiment}
-              type="primary"
-            >
+        >
+          <Header
+            title=""
+            breadcrumbs={[
               <FormattedMessage
-                defaultMessage="Create"
-                description="Button to create a new experiment"
-              />
-            </Button>,
-          ]}
-        />
-        <div css={{ flex: 1, overflow: 'hidden' }}>
-          <div css={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-            <SimpleSelect
-              componentId="mlflow.experiment_list_view.project_filter"
-              id="project-filter-dropdown"
-              value={projectFilter}
-              placeholder={intl.formatMessage({
-                defaultMessage: 'Filter by project',
-                description: 'Placeholder for project filter dropdown',
-              })}
-              onChange={handleProjectFilterChange}
-              data-testid="project-filter-dropdown"
-              disabled={isLoadingProjects}
-            >
-              <SimpleSelectOption value="">
+                key="experiments"
+                defaultMessage="Experiments"
+                description="Breadcrumb item referring to the experiments page"
+              />,
+            ]}
+            buttons={[
+              <Button
+                componentId="mlflow.experiment_list_view.create_button"
+                key="create"
+                data-testid="create-experiment-button"
+                onClick={handleCreateExperiment}
+                type="primary"
+              >
                 <FormattedMessage
-                  defaultMessage="All Projects"
-                  description="Option to show all projects"
+                  defaultMessage="Create"
+                  description="Button to create a new experiment"
                 />
-              </SimpleSelectOption>
-              {projectNames.map((project) => (
-                <SimpleSelectOption key={project} value={project}>
-                  {project}
-                </SimpleSelectOption>
-              ))}
-            </SimpleSelect>
-            <TableFilterInput
-              placeholder={intl.formatMessage({
-                defaultMessage: 'Filter experiments by name',
-                description: 'Placeholder for experiment name filter input',
-              })}
-              value={searchInput}
-              onChange={handleSearchInputChange}
-              onClear={handleClearSearch}
-            />
-          </div>
-          <TableFilterLayout
-            onClearAll={() => {
-              setSearchFilter('');
-              setProjectFilter('');
-            }}
-            isLoading={isLoading}
-            error={error}
-            onRefresh={handleRefresh}
-            isFiltered={Boolean(searchFilter || projectFilter)}
-            resultCount={experimentsData?.length}
+              </Button>,
+            ]}
           />
+        </div>
+        <div css={{ flex: 1, overflow: 'hidden' }}>
+          <TableFilterLayout
+            actions={
+              <div css={{ display: 'flex', gap: 8 }}>
+                <Button
+                  componentId="mlflow.experiment_list_view.refresh_button"
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                >
+                  <FormattedMessage
+                    defaultMessage="Refresh"
+                    description="Button to refresh the experiments list"
+                  />
+                </Button>
+                {(searchFilter || projectFilter) && (
+                  <Button
+                    componentId="mlflow.experiment_list_view.clear_filters_button"
+                    onClick={() => {
+                      setSearchFilter('');
+                      setProjectFilter('');
+                    }}
+                  >
+                    <FormattedMessage
+                      defaultMessage="Clear Filters"
+                      description="Button to clear all filters"
+                    />
+                  </Button>
+                )}
+              </div>
+            }
+          >
+            <div css={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+              <SimpleSelect
+                componentId="mlflow.experiment_list_view.project_filter"
+                id="project-filter-dropdown"
+                value={projectFilter}
+                placeholder={intl.formatMessage({
+                  defaultMessage: 'Filter by project',
+                  description: 'Placeholder for project filter dropdown',
+                })}
+                onChange={handleProjectFilterChange}
+                data-testid="project-filter-dropdown"
+                disabled={isLoadingProjects}
+              >
+                <SimpleSelectOption value="">
+                  <FormattedMessage
+                    defaultMessage="All Projects"
+                    description="Option to show all projects"
+                  />
+                </SimpleSelectOption>
+                {projectNames.map((project) => (
+                  <SimpleSelectOption key={project} value={project}>
+                    {project}
+                  </SimpleSelectOption>
+                ))}
+              </SimpleSelect>
+              <TableFilterInput
+                componentId="mlflow.experiment_list_view.name_filter"
+                placeholder={intl.formatMessage({
+                  defaultMessage: 'Filter experiments by name',
+                  description: 'Placeholder for experiment name filter input',
+                })}
+                value={searchInput}
+                onChange={handleSearchInputChange}
+                onClear={handleClearSearch}
+              />
+            </div>
+            {/* Loading state */}
+            {isLoading && (
+              <div css={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Spinner size="small" />
+                <FormattedMessage
+                  defaultMessage="Loading experiments..."
+                  description="Loading message for experiments"
+                />
+              </div>
+            )}
+            {/* Error state */}
+            {error && (
+              <Alert
+                componentId="mlflow.experiment_list_view.error_alert"
+                type="error"
+                message={error.message}
+                css={{ marginBottom: 16 }}
+              />
+            )}
+            {/* Result count */}
+            {!isLoading && !error && (
+              <div css={{ marginBottom: 16, color: '#666' }}>
+                <FormattedMessage
+                  defaultMessage="{count} {count, plural, one {experiment} other {experiments}}"
+                  description="Count of experiments shown"
+                  values={{ count: experimentsData?.length || 0 }}
+                />
+                {(searchFilter || projectFilter) && (
+                  <FormattedMessage
+                    defaultMessage=" (filtered)"
+                    description="Indicator that results are filtered"
+                  />
+                )}
+              </div>
+            )}
+          </TableFilterLayout>
           <ExperimentListTable
             experiments={experimentsData}
             isLoading={isLoading}

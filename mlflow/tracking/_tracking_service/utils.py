@@ -6,6 +6,8 @@ from functools import partial
 from pathlib import Path
 from typing import Generator, Union
 
+import requests
+
 from mlflow.environment_variables import MLFLOW_TRACKING_URI
 from mlflow.store.db.db_types import DATABASE_ENGINES
 from mlflow.store.tracking import DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH
@@ -26,6 +28,29 @@ def is_tracking_uri_set():
     if _tracking_uri or MLFLOW_TRACKING_URI.get():
         return True
     return False
+
+
+def _check_mlflow_health(uri: str):
+    try:
+        resp = requests.get(f"{uri}/health", timeout=2)
+        if resp.status_code == 200:
+            return True
+    except Exception:
+        pass
+    return False
+
+def auto_set_tracking_uri(mlflow_uris: Union[list[str], None] = None):
+    """
+    Set the tracking URI to the first available URI from the list of URIs.
+    """
+    if mlflow_uris is None:
+        # Default URIs for FAR.AI workloads
+        mlflow_uris = ["http://mlflow.mlflow", "http://localhost:5678"]
+    for uri in mlflow_uris:
+        if _check_mlflow_health(uri):
+            set_tracking_uri(uri)
+            return
+    raise ValueError(f"Could not connect to any MLflow tracking server (tried {mlflow_uris})")
 
 
 def set_tracking_uri(uri: Union[str, Path]) -> None:

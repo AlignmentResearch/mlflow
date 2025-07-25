@@ -12,12 +12,14 @@ from mlflow.tracking._tracking_service.utils import (
     get_tracking_uri,
     is_tracking_uri_set,
     set_tracking_uri,
+    auto_set_tracking_uri,
 )
 from mlflow.version import IS_TRACING_SDK_ONLY
 
 __all__ = [
     "get_tracking_uri",
     "set_tracking_uri",
+    "auto_set_tracking_uri",
     "is_tracking_uri_set",
     "_get_artifact_repo",
     "_get_store",

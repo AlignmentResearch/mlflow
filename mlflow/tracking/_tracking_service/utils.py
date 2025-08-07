@@ -45,7 +45,7 @@ def auto_set_tracking_uri(mlflow_uris: Union[list[str], None] = None):
     """
     if mlflow_uris is None:
         # Default URIs for FAR.AI workloads
-        mlflow_uris = ["http://mlflow.mlflow", "http://localhost:5678"]
+        mlflow_uris = ["http://mlflow-unauthenticated.mlflow", "http://localhost:5678"]
     for uri in mlflow_uris:
         if _check_mlflow_health(uri):
             set_tracking_uri(uri)

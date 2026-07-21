@@ -410,7 +410,7 @@ pathspec==0.12.1
     # via black
 pexpect==4.9.0
     # via ipython
-pillow==11.0.0
+pillow==12.3.0
     # via
     #   -r test-requirements.txt
     #   matplotlib

@@ -52,7 +52,7 @@
     "font-awesome": "4.7.0",
     "graphql": "^15.5.0",
     "http-proxy-middleware": "^1.0.3",
-    "immutable": "3.8.1",
+    "immutable": "4.3.9",
     "invariant": "^2.2.4",
     "js-yaml": "^3.14.0",
     "json-bigint": "databricks/json-bigint#a1defaf9cd8dd749f0fd4d5f83a22cd846789658",

@@ -472,7 +472,7 @@ pygments==2.18.0
     #   rich
     #   sphinx
     #   sphinx-tabs
-pyjwt[crypto]==2.9.0
+pyjwt[crypto]==2.13.0
     # via msal
 pyparsing==3.2.0
     # via matplotlib

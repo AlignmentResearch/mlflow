@@ -699,7 +699,7 @@ typing-extensions==4.12.2
     #   uvicorn
 tzdata==2024.2
     # via pandas
-urllib3==1.26.20
+urllib3==2.8.0
     # via
     #   botocore
     #   docker
